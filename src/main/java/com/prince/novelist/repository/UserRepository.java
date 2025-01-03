@@ -11,16 +11,16 @@ import java.util.Optional;
 public interface UserRepository extends Neo4jRepository<User, String> {
 
 	@Query("MATCH(u:User {userId:$userId} ) OPTIONAL MATCH (u)<- [r:RATED]-(b:Book) RETURN u,r,b")
-	Optional<User> findUserById(String userId);
+	Optional<User> getUserById(String userId);
 
 	@Query("MATCH(u:User) OPTIONAL MATCH (u)<- [r:RATED]-(b:Book) RETURN u,r,b")
 	Collection<User> getAllUsers();
 
 	@Query("CREATE (user : User {name : $name, age: $age, userId: $userId}) RETURN user")
-	User createNewUser(String name, Long age, String userId);
+	Optional<User> createNewUser(String name, Long age, String userId);
 
 	@Query("MATCH (u:User {userId: $id}) SET u.name=$name, u.age=$age RETURN u")
-	User updateUserDetails(String id, String name, Long age);
+	Optional<User> updateUserDetails(String id, String name, Long age);
 
 	@Query("MATCH (user:User {userId: $userId}) MATCH (book : Book {bookId:$bookId}) CREATE (user)<-[r :RATED {rating : $rating}]-(book) RETURN user,r,book")
 	Optional<User> addReview(String userId, String bookId, String rating);

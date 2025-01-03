@@ -19,7 +19,8 @@ public class BookService {
 		String title = book.getTitle();
 		String author = book.getAuthor();
 		String bookId = UUID.randomUUID().toString();
-		return bookRepository.addBook(title,author,bookId);
+		Optional<Book> createdBook =  bookRepository.addBook(title,author,bookId);
+		return createdBook.orElseThrow(() -> new IllegalArgumentException("Invalid arguments"));
 	}
 
 	public Collection<Book> getAllBooks() {
@@ -28,16 +29,17 @@ public class BookService {
 
 	public Book getBookById(String id) {
 		Optional<Book> book = bookRepository.getBookById(id);
-		return book.orElse(null);
+		return book.orElseThrow(()-> new IllegalArgumentException("Invalid arguments"));
 	}
 
-	public Book updateBookById(Book book, String id) {
+	public Book updateBookById(Book book, String id) throws Exception {
 		String title = book.getTitle();
 		String author = book.getAuthor();
 		if(bookRepository.updateBookById(id, title, author).isPresent()) {
-			return bookRepository.updateBookById(id,title,author).get();
+			return bookRepository.updateBookById(id,title,author).orElseThrow(()-> new IllegalArgumentException("Invalid arguments"));
+		} else {
+			throw new Exception("update error");
 		}
-		return null;
 	}
 
 	public Boolean deleteBookById(String id) {

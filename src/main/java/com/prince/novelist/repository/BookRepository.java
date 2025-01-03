@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface BookRepository extends Neo4jRepository<Book, String> {
 
 	@Query("CREATE (book : Book {title : $title, author: $author, bookId: $bookId}) RETURN book")
-	Book addBook(String title, String author,String bookId);
+	Optional<Book> addBook(String title, String author,String bookId);
 
 	@Query("MATCH(b: Book) return b")
 	Collection<Book> getAllBooks();

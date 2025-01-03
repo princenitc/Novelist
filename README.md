@@ -25,3 +25,10 @@
     author : <author>
 }
 ```
+
+
+Swagger-UI available at http://localhost:8081/swagger-ui/index.html#/
+
+
+
+

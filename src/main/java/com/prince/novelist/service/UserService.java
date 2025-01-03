@@ -5,6 +5,7 @@ import com.prince.novelist.model.User;
 import com.prince.novelist.repository.BookRepository;
 import com.prince.novelist.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -25,28 +26,28 @@ public class UserService {
 	}
 
 	public User createUser(User user) {
-		String name = user.getName();
-		Long age = user.getAge();
-		String userId = UUID.randomUUID().toString();
-		return userRepository.createNewUser(name, age,userId);
+		String genId = user.getId() != null ? user.getId() : UUID.randomUUID().toString();
+		user.setId(genId);
+		Optional<User> createdUser =  userRepository.createNewUser(user.getName(), user.getAge(), user.getId());
+		return createdUser.orElseThrow(() -> new IllegalArgumentException("User Creation Failed"));
 	}
 
 	public User findUserById(String id) {
-		Optional<User> user = userRepository.findUserById(id);
-		return user.orElse(null);
+		Optional<User> user = userRepository.getUserById(id);
+		return user.orElseThrow(() -> new IllegalArgumentException("User not found"));
 	}
 
 	public User updateUser(User user, String id) {
-		if( userRepository.findUserById(id).isPresent()) {
-			String name = user.getName();
-			Long age = user.getAge();
-			return userRepository.updateUserDetails(id,name,age);
-		}
-		return null;
+			if(userRepository.getUserById(id).isPresent()) {
+				Optional<User> updatedUser = userRepository.updateUserDetails(id,user.getName(),user.getAge());
+				return updatedUser.orElseThrow(() -> new IllegalArgumentException("User Update failed"));
+			} else {
+				throw new IllegalArgumentException("Invalid Arguments");
+			}
 	}
 
 	public boolean deleteUser(String id) {
-		if(userRepository.findUserById(id).isPresent()) {
+		if(userRepository.getUserById(id).isPresent()) {
 			userRepository.deleteUserById(id);
 			return true;
 		} else {
@@ -60,16 +61,15 @@ public class UserService {
 	bookId,
 	rating
 	 */
-	public User addReview(Review review) {
+	public User addReview(Review review) throws Exception {
 		String userId = review.getUserId();
 		String bookId = review.getBookId();
 		String rating = review.getRating();
-		if(userRepository.findUserById(userId).isPresent() && bookRepository.getBookById(bookId).isPresent()) {
-			Optional<User> user = userRepository.addReview(userId, bookId, rating);
-			if(user.isPresent()) {
-				return user.get();
-			}
+		if(userRepository.getUserById(userId).isPresent() && bookRepository.getBookById(bookId).isPresent()) {
+			Optional<User> ratedUser = userRepository.addReview(userId, bookId, rating);
+			return ratedUser.orElseThrow(()-> new IllegalArgumentException("rating addition failed"));
+		} else {
+			throw new Exception("Internal Error");
 		}
-		return null;
 	}
 }

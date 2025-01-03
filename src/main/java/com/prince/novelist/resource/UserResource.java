@@ -40,7 +40,7 @@ public class UserResource {
 	}
 
 	@PostMapping("/addReview")
-	public User addReview(@RequestBody Review review) {
+	public User addReview(@RequestBody Review review) throws Exception {
 		return userService.addReview(review);
 	}
 }

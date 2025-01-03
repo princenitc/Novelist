@@ -5,6 +5,7 @@ import com.prince.novelist.service.BookService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.Collection;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/books")
@@ -31,7 +32,7 @@ public class BookResource {
 	}
 
 	@PutMapping("/update/{bookId}")
-	public Book updateBook(@PathVariable("bookId") String bookId, @RequestBody Book book) {
+	public Book updateBook(@PathVariable("bookId") String bookId, @RequestBody Book book) throws Exception {
 		return bookService.updateBookById(book,bookId);
 	}
 

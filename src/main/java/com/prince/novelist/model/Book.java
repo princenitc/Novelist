@@ -17,7 +17,7 @@ public class Book {
 		return bookId;
 	}
 
-	public void setId(Long id) {
+	public void setId(String bookId) {
 		this.bookId = bookId;
 	}
 

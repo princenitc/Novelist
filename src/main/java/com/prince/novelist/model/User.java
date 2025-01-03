@@ -21,7 +21,7 @@ public class User {
 	public User() {
 	}
 
-	public void setId(Long id) {
+	public void setId(String userId) {
 		this.userId = userId;
 	}
 
@@ -34,7 +34,7 @@ public class User {
 	}
 
 	public String getId() {
-		return userId;
+		return this.userId;
 	}
 
 	public String getName() {
