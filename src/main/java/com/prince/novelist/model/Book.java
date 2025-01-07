@@ -1,5 +1,6 @@
 package com.prince.novelist.model;
 
+import com.prince.novelist.repository.BookRepository;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 
@@ -11,6 +12,10 @@ public class Book {
 	private String author;
 
 	public Book() {
+	}
+	public Book(String title, String author) {
+		this.author = author;
+		this.title = title;
 	}
 
 	public String getId() {
