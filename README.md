@@ -406,9 +406,9 @@ docker build -t novelist-app .
 
 # Run container
 docker run -p 8081:8081 \
-  -e SPRING_DATA_NEO4J_URI=bolt://host.docker.internal:7687 \
-  -e SPRING_DATA_NEO4J_USERNAME=neo4j \
-  -e SPRING_DATA_NEO4J_PASSWORD=thisIsPassword \
+  -e SPRING_NEO4J_URI=bolt://host.docker.internal:7687 \
+  -e SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j \
+  -e SPRING_NEO4J_AUTHENTICATION_PASSWORD=thisIsPassword \
   novelist-app
 
 # Using Docker Compose
@@ -484,9 +484,9 @@ Novelist/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SPRING_DATA_NEO4J_URI` | Neo4j connection URI | `bolt://localhost:7687` |
-| `SPRING_DATA_NEO4J_USERNAME` | Neo4j username | `neo4j` |
-| `SPRING_DATA_NEO4J_PASSWORD` | Neo4j password | `thisIsPassword` |
+| `SPRING_NEO4J_URI` | Neo4j connection URI | `bolt://localhost:7687` |
+| `SPRING_NEO4J_AUTHENTICATION_USERNAME` | Neo4j username | `neo4j` |
+| `SPRING_NEO4J_AUTHENTICATION_PASSWORD` | Neo4j password | `thisIsPassword` |
 | `SERVER_PORT` | Application port | `8081` |
 
 ## 🐛 Troubleshooting
