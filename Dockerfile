@@ -14,12 +14,12 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup -S novelist && adduser -S novelist -G novelist
+RUN groupadd -r novelist && useradd -r -g novelist novelist
 
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
@@ -32,10 +32,6 @@ USER novelist
 
 # Expose application port
 EXPOSE 8081
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
