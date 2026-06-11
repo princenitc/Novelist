@@ -1,6 +1,7 @@
 package com.prince.novelist.service;
 
 import com.prince.novelist.TestSetup;
+import com.prince.novelist.exception.ResourceNotFoundException;
 import com.prince.novelist.model.Book;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,28 +18,38 @@ public class BookIntegrationTest {
 	private BookService bookService;
 
 	@Test
-	void createBookIntegrationTest() throws Exception {
-
+	void shouldPerformCompleteBookLifecycle() {
 		// Step 1: Create a new book
 		Book newBook = new Book("Gunaho ka Devta", "Dharmaveer Bharti");
-		Book savedBook = bookService.addBook(newBook);
+		Book savedBook = bookService.createBook(newBook);
 		assertNotNull(savedBook, "Saved book should not be null");
-		String createdBookId = savedBook.getId();
+		String createdBookId = savedBook.getBookId();
+		assertNotNull(createdBookId, "Book ID should be generated");
 
 		// Step 2: Validate the created book's data
-		assertEquals(newBook.getAuthor(), bookService.getBookById(createdBookId).getAuthor());
-		assertEquals(newBook.getTitle(), bookService.getBookById(createdBookId).getTitle());
+		Book retrievedBook = bookService.getBookById(createdBookId);
+		assertEquals(newBook.getAuthor(), retrievedBook.getAuthor());
+		assertEquals(newBook.getTitle(), retrievedBook.getTitle());
 
 		// Step 3: Update the book
 		Book updatedBook = new Book("Three Idiots", "Chetan Bhagat");
-		Book updatedBookResult = bookService.updateBookById(updatedBook, createdBookId);
+		Book updatedBookResult = bookService.updateBook(updatedBook, createdBookId);
 
 		assertNotNull(updatedBookResult, "Updated book should not be null");
-		assertEquals(updatedBook.getTitle(), bookService.getBookById(createdBookId).getTitle());
-		assertEquals(updatedBook.getAuthor(), bookService.getBookById(createdBookId).getAuthor());
+		assertEquals(updatedBook.getTitle(), updatedBookResult.getTitle());
+		assertEquals(updatedBook.getAuthor(), updatedBookResult.getAuthor());
+
+		// Verify the update persisted
+		Book verifyUpdate = bookService.getBookById(createdBookId);
+		assertEquals(updatedBook.getTitle(), verifyUpdate.getTitle());
+		assertEquals(updatedBook.getAuthor(), verifyUpdate.getAuthor());
 
 		// Step 4: Delete the book
-		boolean isDeleted = bookService.deleteBookById(createdBookId);
-		assertTrue(isDeleted, "The book should be deleted successfully");
+		bookService.deleteBook(createdBookId);
+
+		// Step 5: Verify deletion - should throw ResourceNotFoundException
+		assertThrows(ResourceNotFoundException.class, () -> {
+			bookService.getBookById(createdBookId);
+		}, "Getting deleted book should throw ResourceNotFoundException");
 	}
 }

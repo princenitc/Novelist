@@ -1,5 +1,7 @@
 package com.prince.novelist.service;
 
+import com.prince.novelist.exception.InvalidRequestException;
+import com.prince.novelist.exception.ResourceNotFoundException;
 import com.prince.novelist.model.Book;
 import com.prince.novelist.model.Review;
 import com.prince.novelist.model.User;
@@ -29,17 +31,17 @@ class UserServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		MockitoAnnotations.openMocks(this); // Initializes mocks
+		MockitoAnnotations.openMocks(this);
 	}
 
-	// Test case for creating a user
 	@Test
-	void testCreateUser() {
+	void shouldCreateUser() {
 		// Given
 		User newUser = new User();
 		newUser.setName("John");
 		newUser.setAge(30L);
-		newUser.setId("userId");
+		newUser.setUserId("userId");
+		
 		Mockito.when(userRepository.createNewUser(Mockito.anyString(), Mockito.anyLong(), Mockito.anyString()))
 				.thenReturn(Optional.of(newUser));
 
@@ -50,37 +52,59 @@ class UserServiceTest {
 		assertNotNull(createdUser);
 		assertEquals("John", createdUser.getName());
 		assertEquals(30, createdUser.getAge());
-		assertEquals("userId", createdUser.getId());
+		assertEquals("userId", createdUser.getUserId());
 	}
 
-	// Test case for finding user by ID
 	@Test
-	void testFindUserById() {
+	void shouldThrowInvalidRequestExceptionWhenUserCreationFails() {
+		// Given
+		User newUser = new User();
+		newUser.setName("John");
+		newUser.setAge(30L);
+		
+		Mockito.when(userRepository.createNewUser(Mockito.anyString(), Mockito.anyLong(), Mockito.anyString()))
+				.thenReturn(Optional.empty());
+
+		// When & Then
+		assertThrows(InvalidRequestException.class, () -> userService.createUser(newUser));
+	}
+
+	@Test
+	void shouldFindUserById() {
 		// Given
 		String userId = "existing-user-id";
 		User existingUser = new User();
-		existingUser.setId(userId);
+		existingUser.setUserId(userId);
 		existingUser.setName("Jane");
 		existingUser.setAge(25L);
 
 		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.of(existingUser));
 
 		// When
-		User foundUser = userService.findUserById(userId);
+		User foundUser = userService.getUserById(userId);
 
 		// Then
 		assertNotNull(foundUser);
-		assertEquals(userId, foundUser.getId());
+		assertEquals(userId, foundUser.getUserId());
 		assertEquals("Jane", foundUser.getName());
 	}
 
-	// Test case for updating a user
 	@Test
-	void testUpdateUser() {
+	void shouldThrowResourceNotFoundExceptionWhenUserNotFound() {
+		// Given
+		String userId = "non-existent-id";
+		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.empty());
+
+		// When & Then
+		assertThrows(ResourceNotFoundException.class, () -> userService.getUserById(userId));
+	}
+
+	@Test
+	void shouldUpdateUser() {
 		// Given
 		String userId = "existing-user-id";
 		User existingUser = new User();
-		existingUser.setId(userId);
+		existingUser.setUserId(userId);
 		existingUser.setName("Jane");
 		existingUser.setAge(25L);
 
@@ -101,31 +125,52 @@ class UserServiceTest {
 		assertEquals(26L, result.getAge());
 	}
 
-	// Test case for deleting a user
 	@Test
-	void testDeleteUser() {
+	void shouldThrowResourceNotFoundExceptionWhenUpdatingNonExistentUser() {
+		// Given
+		String userId = "non-existent-id";
+		User updatedUser = new User();
+		updatedUser.setName("Test");
+		updatedUser.setAge(25L);
+		
+		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.empty());
+
+		// When & Then
+		assertThrows(ResourceNotFoundException.class, () -> userService.updateUser(updatedUser, userId));
+	}
+
+	@Test
+	void shouldDeleteUser() {
 		// Given
 		String userId = "existing-user-id";
 		User existingUser = new User();
-		existingUser.setId(userId);
+		existingUser.setUserId(userId);
 
 		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.of(existingUser));
 
 		// When
-		boolean isDeleted = userService.deleteUser(userId);
+		userService.deleteUser(userId);
 
 		// Then
-		assertTrue(isDeleted);
 		Mockito.verify(userRepository).deleteUserById(userId);
 	}
 
-	// Test case for adding a review
 	@Test
-	void testAddReview() throws Exception {
+	void shouldThrowResourceNotFoundExceptionWhenDeletingNonExistentUser() {
+		// Given
+		String userId = "non-existent-id";
+		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.empty());
+
+		// When & Then
+		assertThrows(ResourceNotFoundException.class, () -> userService.deleteUser(userId));
+	}
+
+	@Test
+	void shouldAddReview() {
 		// Given
 		String userId = "user-id";
 		String bookId = "book-id";
-		String rating = "5";
+		Integer rating = 5;
 
 		Review review = new Review();
 		review.setUserId(userId);
@@ -133,37 +178,52 @@ class UserServiceTest {
 		review.setRating(rating);
 
 		User user = new User();
-		user.setId(userId);
+		user.setUserId(userId);
+		Book book = new Book();
+		book.setBookId(bookId);
 
 		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.of(user));
-		Mockito.when(bookRepository.getBookById(bookId)).thenReturn(Optional.of(new Book())); // Mocking book presence
-		Mockito.when(userRepository.addReview(userId, bookId, rating)).thenReturn(Optional.of(user));
+		Mockito.when(bookRepository.getBookById(bookId)).thenReturn(Optional.of(book));
+		Mockito.when(userRepository.save(Mockito.any(User.class))).thenReturn(user);
 
 		// When
 		User result = userService.addReview(review);
 
 		// Then
 		assertNotNull(result);
-		Mockito.verify(userRepository).addReview(userId, bookId, rating);
+		Mockito.verify(userRepository).save(Mockito.any(User.class));
 	}
 
-	// Test case for addReview when user or book does not exist
 	@Test
-	void testAddReviewUserOrBookNotFound() {
+	void shouldThrowResourceNotFoundExceptionWhenAddingReviewForNonExistentUser() {
 		// Given
 		Review review = new Review();
 		review.setUserId("invalid-user-id");
-		review.setBookId("invalid-book-id");
-		review.setRating("5");
+		review.setBookId("book-id");
+		review.setRating(5);
 
 		Mockito.when(userRepository.getUserById(review.getUserId())).thenReturn(Optional.empty());
+
+		// When & Then
+		assertThrows(ResourceNotFoundException.class, () -> userService.addReview(review));
+	}
+
+	@Test
+	void shouldThrowResourceNotFoundExceptionWhenAddingReviewForNonExistentBook() {
+		// Given
+		String userId = "user-id";
+		Review review = new Review();
+		review.setUserId(userId);
+		review.setBookId("invalid-book-id");
+		review.setRating(5);
+
+		User user = new User();
+		user.setUserId(userId);
+
+		Mockito.when(userRepository.getUserById(userId)).thenReturn(Optional.of(user));
 		Mockito.when(bookRepository.getBookById(review.getBookId())).thenReturn(Optional.empty());
 
 		// When & Then
-		Exception exception = assertThrows(Exception.class, () -> {
-			userService.addReview(review);
-		});
-
-		assertEquals("Internal Error", exception.getMessage());
+		assertThrows(ResourceNotFoundException.class, () -> userService.addReview(review));
 	}
 }

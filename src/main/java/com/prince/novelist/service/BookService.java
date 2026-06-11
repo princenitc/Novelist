@@ -1,5 +1,7 @@
 package com.prince.novelist.service;
 
+import com.prince.novelist.exception.InvalidRequestException;
+import com.prince.novelist.exception.ResourceNotFoundException;
 import com.prince.novelist.model.Book;
 import com.prince.novelist.repository.BookRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,12 +17,13 @@ public class BookService {
 	@Autowired
 	BookRepository bookRepository;
 
-	public Book addBook(Book book) {
+	public Book createBook(Book book) {
 		String title = book.getTitle();
 		String author = book.getAuthor();
 		String bookId = UUID.randomUUID().toString();
-		Optional<Book> createdBook =  bookRepository.addBook(title,author,bookId);
-		return createdBook.orElseThrow(() -> new IllegalArgumentException("Invalid arguments"));
+		Optional<Book> createdBook = bookRepository.addBook(title, author, bookId);
+		return createdBook.orElseThrow(() ->
+			new InvalidRequestException("Failed to create book with provided data"));
 	}
 
 	public Collection<Book> getAllBooks() {
@@ -29,24 +32,28 @@ public class BookService {
 
 	public Book getBookById(String id) {
 		Optional<Book> book = bookRepository.getBookById(id);
-		return book.orElseThrow(()-> new IllegalArgumentException("Invalid arguments"));
+		return book.orElseThrow(() ->
+			new ResourceNotFoundException("Book not found with id: " + id));
 	}
 
-	public Book updateBookById(Book book, String id) throws Exception {
+	public Book updateBook(Book book, String id) {
 		String title = book.getTitle();
 		String author = book.getAuthor();
-		if(bookRepository.updateBookById(id, title, author).isPresent()) {
-			return bookRepository.updateBookById(id,title,author).orElseThrow(()-> new IllegalArgumentException("Invalid arguments"));
-		} else {
-			throw new Exception("update error");
+		
+		// Check if book exists first
+		if (!bookRepository.getBookById(id).isPresent()) {
+			throw new ResourceNotFoundException("Book not found with id: " + id);
 		}
+		
+		Optional<Book> updatedBook = bookRepository.updateBookById(id, title, author);
+		return updatedBook.orElseThrow(() ->
+			new InvalidRequestException("Failed to update book with provided data"));
 	}
 
-	public Boolean deleteBookById(String id) {
-		if(bookRepository.getBookById(id).isPresent()) {
-			bookRepository.deleteBookById(id);
-			return true;
+	public void deleteBook(String id) {
+		if (!bookRepository.getBookById(id).isPresent()) {
+			throw new ResourceNotFoundException("Book not found with id: " + id);
 		}
-		return false;
+		bookRepository.deleteBookById(id);
 	}
 }
