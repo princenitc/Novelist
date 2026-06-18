@@ -47,7 +47,7 @@ A Spring Boot 3 application using Neo4j graph database for managing books, users
    docker run -d \
      --name neo4j \
      -p 7474:7474 -p 7687:7687 \
-     -e NEO4J_AUTH=neo4j/thisIsPassword \
+     -e NEO4J_AUTH=neo4j/password \
      neo4j:5.15.0
    ```
 
@@ -105,7 +105,7 @@ Base URL: `http://localhost:8081/api/v1`
 | GET | `/users/{userId}` | Get user by ID |
 | PUT | `/users/{userId}` | Update user |
 | DELETE | `/users/{userId}` | Delete user |
-| POST | `/users/{userId}/reviews` | Add a book review/rating |
+| POST | `/users/{userId}/ratings/{bookId}` | Add a book review/rating |
 
 ## 📝 API Request/Response Examples
 
@@ -156,12 +156,11 @@ curl -X POST http://localhost:8081/api/v1/users \
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8081/api/v1/users/660e8400-e29b-41d4-a716-446655440001/reviews \
+curl -X POST http://localhost:8081/api/v1/users/660e8400-e29b-41d4-a716-446655440001/ratings/550e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "660e8400-e29b-41d4-a716-446655440001",
-    "bookId": "550e8400-e29b-41d4-a716-446655440000",
-    "rating": 5
+    "rating": 5,
+    "review": "A masterpiece!"
   }'
 ```
 
@@ -274,19 +273,19 @@ curl -X PUT http://localhost:8081/api/v1/users/{userId} \
 #### Add Multiple Ratings
 ```bash
 # User 1 rates Book 1 (5 stars)
-curl -X POST http://localhost:8081/api/v1/users/{userId}/reviews \
+curl -X POST http://localhost:8081/api/v1/users/{userId}/ratings/{bookId} \
   -H "Content-Type: application/json" \
-  -d '{"userId": "{userId}", "bookId": "{bookId}", "rating": 5}'
+  -d '{"rating": 5}'
 
 # User 1 rates Book 2 (4 stars)
-curl -X POST http://localhost:8081/api/v1/users/{userId}/reviews \
+curl -X POST http://localhost:8081/api/v1/users/{userId}/ratings/{bookId2} \
   -H "Content-Type: application/json" \
-  -d '{"userId": "{userId}", "bookId": "{bookId2}", "rating": 4}'
+  -d '{"rating": 4}'
 
 # User 2 rates Book 1 (3 stars)
-curl -X POST http://localhost:8081/api/v1/users/{userId2}/reviews \
+curl -X POST http://localhost:8081/api/v1/users/{userId2}/ratings/{bookId} \
   -H "Content-Type: application/json" \
-  -d '{"userId": "{userId2}", "bookId": "{bookId}", "rating": 3}'
+  -d '{"rating": 3}'
 ```
 
 #### Verify Ratings
@@ -307,9 +306,9 @@ curl -X POST http://localhost:8081/api/v1/books \
 
 #### Invalid Rating (out of range)
 ```bash
-curl -X POST http://localhost:8081/api/v1/users/{userId}/reviews \
+curl -X POST http://localhost:8081/api/v1/users/{userId}/ratings/{bookId} \
   -H "Content-Type: application/json" \
-  -d '{"userId": "{userId}", "bookId": "{bookId}", "rating": 10}'
+  -d '{"rating": 10}'
 # Expected: 400 Bad Request - rating must be between 1 and 5
 ```
 
@@ -351,9 +350,9 @@ USER_RESPONSE=$(curl -s -X POST http://localhost:8081/api/v1/users \
 USER_ID=$(echo $USER_RESPONSE | jq -r '.userId')
 
 # 3. User rates the book
-curl -X POST http://localhost:8081/api/v1/users/$USER_ID/reviews \
+curl -X POST http://localhost:8081/api/v1/users/$USER_ID/ratings/$BOOK_ID \
   -H "Content-Type: application/json" \
-  -d "{\"userId\": \"$USER_ID\", \"bookId\": \"$BOOK_ID\", \"rating\": 5}"
+  -d "{\"rating\": 5}"
 
 # 4. Verify the rating
 curl http://localhost:8081/api/v1/users/$USER_ID
@@ -408,7 +407,7 @@ docker build -t novelist-app .
 docker run -p 8081:8081 \
   -e SPRING_NEO4J_URI=bolt://host.docker.internal:7687 \
   -e SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j \
-  -e SPRING_NEO4J_AUTHENTICATION_PASSWORD=thisIsPassword \
+  -e SPRING_NEO4J_AUTHENTICATION_PASSWORD=password \
   novelist-app
 
 # Using Docker Compose
@@ -427,7 +426,7 @@ http://localhost:7474
 
 **Credentials:**
 - Username: `neo4j`
-- Password: `thisIsPassword`
+- Password: `password`
 
 **Useful Cypher Queries:**
 ```cypher
@@ -486,7 +485,7 @@ Novelist/
 |----------|-------------|---------|
 | `SPRING_NEO4J_URI` | Neo4j connection URI | `bolt://localhost:7687` |
 | `SPRING_NEO4J_AUTHENTICATION_USERNAME` | Neo4j username | `neo4j` |
-| `SPRING_NEO4J_AUTHENTICATION_PASSWORD` | Neo4j password | `thisIsPassword` |
+| `SPRING_NEO4J_AUTHENTICATION_PASSWORD` | Neo4j password | `password` |
 | `SERVER_PORT` | Application port | `8081` |
 
 ## 🐛 Troubleshooting
