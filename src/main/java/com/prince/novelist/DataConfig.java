@@ -1,22 +1,9 @@
 package com.prince.novelist;
 
-import org.neo4j.driver.Driver;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
 
 @Configuration
+@EnableNeo4jRepositories(basePackages = "com.prince.novelist.repository")
 public class DataConfig {
-
-	@Bean
-	@Profile("dev | tes")
-	public Driver driver() {
-		return null;
-	}
-
-	@Bean
-	@Profile("production")
-	public Driver prodDriver() {
-		return null;
-	}
 }
