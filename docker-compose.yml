@@ -49,9 +49,14 @@ services:
       - SPRING_NEO4J_URI=bolt://neo4j:7687
       - SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j
       - SPRING_NEO4J_AUTHENTICATION_PASSWORD=password
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_USERNAME=novelist
+      - SPRING_RABBITMQ_PASSWORD=password
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       neo4j:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - novelist-network
@@ -64,12 +69,62 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: novelist-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: novelist
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - novelist-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: novelist-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - novelist-network
+
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: novelist-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - novelist-network
+    depends_on:
+      - prometheus
+
 volumes:
   neo4j_data:
   neo4j_logs:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   novelist-network:
     driver: bridge
-
-# Made with Bob

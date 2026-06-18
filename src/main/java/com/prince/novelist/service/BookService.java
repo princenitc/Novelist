@@ -28,10 +28,12 @@ public class BookService {
 
 	private final BookRepository bookRepository;
 	private final BookMapper bookMapper;
+	private final com.prince.novelist.publisher.DomainEventPublisher eventPublisher;
 
-	public BookService(BookRepository bookRepository, BookMapper bookMapper) {
+	public BookService(BookRepository bookRepository, BookMapper bookMapper, com.prince.novelist.publisher.DomainEventPublisher eventPublisher) {
 		this.bookRepository = bookRepository;
 		this.bookMapper = bookMapper;
+		this.eventPublisher = eventPublisher;
 	}
 
 	public PageResponse<BookResponse> getAllBooks(Pageable pageable) {
@@ -65,7 +67,9 @@ public class BookService {
 		Book savedBook = bookRepository.save(book);
 
 		log.info("Created book with id={}", savedBook.getBookId());
-		return bookMapper.toResponse(savedBook);
+		BookResponse response = bookMapper.toResponse(savedBook);
+		eventPublisher.publishBookEvent(new com.prince.novelist.event.BookEvent(null, com.prince.novelist.event.BookEvent.Action.CREATED, response, 0));
+		return response;
 	}
 
 	@Transactional
@@ -85,7 +89,9 @@ public class BookService {
 		Book updatedBook = bookRepository.save(existingBook);
 
 		log.info("Updated book with id={}", bookId);
-		return bookMapper.toResponse(updatedBook);
+		BookResponse response = bookMapper.toResponse(updatedBook);
+		eventPublisher.publishBookEvent(new com.prince.novelist.event.BookEvent(null, com.prince.novelist.event.BookEvent.Action.UPDATED, response, 0));
+		return response;
 	}
 
 	@Transactional
@@ -94,9 +100,11 @@ public class BookService {
 		log.info("Deleting book with id={}", bookId);
 
 		Book existingBook = findBookById(bookId);
+		BookResponse response = bookMapper.toResponse(existingBook);
 		bookRepository.delete(existingBook);
 
 		log.info("Deleted book with id={}", bookId);
+		eventPublisher.publishBookEvent(new com.prince.novelist.event.BookEvent(null, com.prince.novelist.event.BookEvent.Action.DELETED, response, 0));
 	}
 
 	public PageResponse<BookResponse> searchBooks(String query, Pageable pageable) {

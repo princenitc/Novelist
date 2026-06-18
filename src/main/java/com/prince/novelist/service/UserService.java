@@ -36,12 +36,14 @@ public class UserService {
 	private final BookRepository bookRepository;
 	private final UserMapper userMapper;
 	private final BookMapper bookMapper;
+	private final com.prince.novelist.publisher.DomainEventPublisher eventPublisher;
 
-	public UserService(UserRepository userRepository, BookRepository bookRepository, UserMapper userMapper, BookMapper bookMapper) {
+	public UserService(UserRepository userRepository, BookRepository bookRepository, UserMapper userMapper, BookMapper bookMapper, com.prince.novelist.publisher.DomainEventPublisher eventPublisher) {
 		this.userRepository = userRepository;
 		this.bookRepository = bookRepository;
 		this.userMapper = userMapper;
 		this.bookMapper = bookMapper;
+		this.eventPublisher = eventPublisher;
 	}
 
 	public PageResponse<UserResponse> getAllUsers(Pageable pageable) {
@@ -145,6 +147,8 @@ public class UserService {
 		}
 
 		userRepository.save(user);
+
+		eventPublisher.publishRatingEvent(new com.prince.novelist.event.RatingEvent(null, userId, bookId, request.getRating(), request.getReview(), 0));
 
 		return mapRatingResponse(savedRating);
 	}
