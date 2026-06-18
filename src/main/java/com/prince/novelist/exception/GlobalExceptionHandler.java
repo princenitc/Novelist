@@ -1,191 +1,238 @@
 package com.prince.novelist.exception;
 
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
-            ResourceNotFoundException ex, WebRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.NOT_FOUND.value(),
-                HttpStatus.NOT_FOUND.getReasonPhrase(),
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
+	@ExceptionHandler(ResourceNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.NOT_FOUND.value(),
+			ex.getMessage(),
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+	}
 
-    @ExceptionHandler(InvalidRequestException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidRequestException(
-            InvalidRequestException ex, WebRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
+	@ExceptionHandler(DuplicateResourceException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateResourceException(DuplicateResourceException ex) {
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.CONFLICT.value(),
+			ex.getMessage(),
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+	}
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationErrorResponse> handleValidationExceptions(
-            MethodArgumentNotValidException ex, WebRequest request) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException ex) {
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.BAD_REQUEST.value(),
+			ex.getMessage(),
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
 
-        ValidationErrorResponse errorResponse = new ValidationErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "Validation Failed",
-                errors,
-                request.getDescription(false).replace("uri=", "")
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
+	@ExceptionHandler(InvalidRequestException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidRequestException(InvalidRequestException ex) {
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.BAD_REQUEST.value(),
+			ex.getMessage(),
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(
-            Exception ex, WebRequest request) {
-        ErrorResponse errorResponse = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                ex.getMessage(),
-                request.getDescription(false).replace("uri=", "")
-        );
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+		Map<String, Object> response = new HashMap<>();
+		Map<String, String> errors = new HashMap<>();
+		
+		ex.getBindingResult().getAllErrors().forEach((error) -> {
+			String fieldName = ((FieldError) error).getField();
+			String errorMessage = error.getDefaultMessage();
+			errors.put(fieldName, errorMessage);
+		});
+		
+		response.put("status", HttpStatus.BAD_REQUEST.value());
+		response.put("message", "Validation failed");
+		response.put("errors", errors);
+		response.put("timestamp", LocalDateTime.now());
+		
+		return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+	}
 
-    // Error Response DTO
-    public static class ErrorResponse {
-        private LocalDateTime timestamp;
-        private int status;
-        private String error;
-        private String message;
-        private String path;
+	@ExceptionHandler(ConstraintViolationException.class)
+	public ResponseEntity<Map<String, Object>> handleConstraintViolationException(ConstraintViolationException ex) {
+		Map<String, Object> response = new HashMap<>();
+		Map<String, String> errors = new HashMap<>();
+		
+		ex.getConstraintViolations().forEach(violation -> {
+			String propertyPath = violation.getPropertyPath().toString();
+			String message = violation.getMessage();
+			errors.put(propertyPath, message);
+		});
+		
+		response.put("status", HttpStatus.BAD_REQUEST.value());
+		response.put("message", "Constraint violation");
+		response.put("errors", errors);
+		response.put("timestamp", LocalDateTime.now());
+		
+		return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+	}
 
-        public ErrorResponse(LocalDateTime timestamp, int status, String error, String message, String path) {
-            this.timestamp = timestamp;
-            this.status = status;
-            this.error = error;
-            this.message = message;
-            this.path = path;
-        }
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+		String message = "Data integrity violation";
+		
+		// Try to extract more specific message
+		if (ex.getCause() != null && ex.getCause().getMessage() != null) {
+			String causeMessage = ex.getCause().getMessage().toLowerCase();
+			if (causeMessage.contains("unique") || causeMessage.contains("duplicate")) {
+				message = "A record with this value already exists";
+			} else if (causeMessage.contains("foreign key") || causeMessage.contains("constraint")) {
+				message = "Cannot perform operation due to data constraints";
+			}
+		}
+		
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.CONFLICT.value(),
+			message,
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+	}
 
-        public LocalDateTime getTimestamp() {
-            return timestamp;
-        }
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+		String message = "Malformed JSON request";
+		
+		if (ex.getCause() != null) {
+			message = "Invalid request format: " + ex.getCause().getMessage();
+		}
+		
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.BAD_REQUEST.value(),
+			message,
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
 
-        public void setTimestamp(LocalDateTime timestamp) {
-            this.timestamp = timestamp;
-        }
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
+			HttpRequestMethodNotSupportedException ex) {
+		String message = String.format("Request method '%s' not supported. Supported methods are: %s",
+			ex.getMethod(),
+			ex.getSupportedHttpMethods() != null ?
+				ex.getSupportedHttpMethods().stream()
+					.map(Object::toString)
+					.collect(Collectors.joining(", ")) : "");
+		
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.METHOD_NOT_ALLOWED.value(),
+			message,
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.METHOD_NOT_ALLOWED);
+	}
 
-        public int getStatus() {
-            return status;
-        }
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+			MissingServletRequestParameterException ex) {
+		String message = String.format("Required parameter '%s' of type '%s' is missing",
+			ex.getParameterName(), ex.getParameterType());
+		
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.BAD_REQUEST.value(),
+			message,
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
 
-        public void setStatus(int status) {
-            this.status = status;
-        }
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+			MethodArgumentTypeMismatchException ex) {
+		String message = String.format("Parameter '%s' should be of type '%s'",
+			ex.getName(),
+			ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+		
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.BAD_REQUEST.value(),
+			message,
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
 
-        public String getError() {
-            return error;
-        }
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
+		// Log the exception for debugging
+		ex.printStackTrace();
+		
+		ErrorResponse error = new ErrorResponse(
+			HttpStatus.INTERNAL_SERVER_ERROR.value(),
+			"An unexpected error occurred. Please try again later.",
+			LocalDateTime.now()
+		);
+		return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+	}
 
-        public void setError(String error) {
-            this.error = error;
-        }
+	// Error response DTO
+	public static class ErrorResponse {
+		private int status;
+		private String message;
+		private LocalDateTime timestamp;
 
-        public String getMessage() {
-            return message;
-        }
+		public ErrorResponse(int status, String message, LocalDateTime timestamp) {
+			this.status = status;
+			this.message = message;
+			this.timestamp = timestamp;
+		}
 
-        public void setMessage(String message) {
-            this.message = message;
-        }
+		public int getStatus() {
+			return status;
+		}
 
-        public String getPath() {
-            return path;
-        }
+		public void setStatus(int status) {
+			this.status = status;
+		}
 
-        public void setPath(String path) {
-            this.path = path;
-        }
-    }
+		public String getMessage() {
+			return message;
+		}
 
-    // Validation Error Response DTO
-    public static class ValidationErrorResponse {
-        private LocalDateTime timestamp;
-        private int status;
-        private String error;
-        private Map<String, String> errors;
-        private String path;
+		public void setMessage(String message) {
+			this.message = message;
+		}
 
-        public ValidationErrorResponse(LocalDateTime timestamp, int status, String error, 
-                                     Map<String, String> errors, String path) {
-            this.timestamp = timestamp;
-            this.status = status;
-            this.error = error;
-            this.errors = errors;
-            this.path = path;
-        }
+		public LocalDateTime getTimestamp() {
+			return timestamp;
+		}
 
-        public LocalDateTime getTimestamp() {
-            return timestamp;
-        }
-
-        public void setTimestamp(LocalDateTime timestamp) {
-            this.timestamp = timestamp;
-        }
-
-        public int getStatus() {
-            return status;
-        }
-
-        public void setStatus(int status) {
-            this.status = status;
-        }
-
-        public String getError() {
-            return error;
-        }
-
-        public void setError(String error) {
-            this.error = error;
-        }
-
-        public Map<String, String> getErrors() {
-            return errors;
-        }
-
-        public void setErrors(Map<String, String> errors) {
-            this.errors = errors;
-        }
-
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-    }
+		public void setTimestamp(LocalDateTime timestamp) {
+			this.timestamp = timestamp;
+		}
+	}
 }
+
+// Made with Bob

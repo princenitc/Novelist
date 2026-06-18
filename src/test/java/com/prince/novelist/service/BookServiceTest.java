@@ -35,7 +35,7 @@ public class BookServiceTest {
 		newBook.setTitle("Karmabhoomi");
 		newBook.setBookId("1");
 		newBook.setAuthor("Munshi Premchandra");
-		
+
 		Mockito.when(bookRepository.addBook(Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
 				.thenReturn(Optional.of(newBook));
 
@@ -55,7 +55,7 @@ public class BookServiceTest {
 		Book newBook = new Book();
 		newBook.setTitle("Test Book");
 		newBook.setAuthor("Test Author");
-		
+
 		Mockito.when(bookRepository.addBook(Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
 				.thenReturn(Optional.empty());
 
@@ -126,7 +126,7 @@ public class BookServiceTest {
 		Book updatedBook = new Book();
 		updatedBook.setTitle("Test");
 		updatedBook.setAuthor("Test Author");
-		
+
 		Mockito.when(bookRepository.getBookById(bookId)).thenReturn(Optional.empty());
 
 		// When & Then
@@ -141,7 +141,7 @@ public class BookServiceTest {
 		existingBook.setBookId(bookId);
 
 		Mockito.when(bookRepository.getBookById(bookId)).thenReturn(Optional.of(existingBook));
-		
+
 		// When
 		bookService.deleteBook(bookId);
 
