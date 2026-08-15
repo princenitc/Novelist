@@ -1,0 +1,330 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-16T21:54:00.000Z",
+  "__export_source": "insomnia.desktop",
+  "resources": [
+    {
+      "_id": "wrk_novelist",
+      "_type": "workspace",
+      "name": "Novelist API",
+      "description": "Novelist - Book Management & Recommendations API",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_novelist",
+      "_type": "environment",
+      "parentId": "wrk_novelist",
+      "name": "Local",
+      "data": {
+        "base_url": "http://localhost:8081",
+        "user_id": "859f05c1-fee9-4aed-b6cd-f8c6e933ac6f",
+        "book_id": "a794af34-1e2b-4031-a911-0f2f7798e72c"
+      },
+      "isPrivate": false,
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "fld_books",
+      "_type": "request_group",
+      "parentId": "wrk_novelist",
+      "name": "Books",
+      "environment": {},
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "req_create_book",
+      "_type": "request",
+      "parentId": "fld_books",
+      "name": "Create Book",
+      "url": "{{ base_url }}/api/v1/books",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"title\":\"The Hobbit\",\"author\":\"J.R.R. Tolkien\",\"isbn\":\"978-0261102217\",\"publishedYear\":1937,\"description\":\"An adventure of hobbit\",\"language\":\"en\",\"pageCount\":310,\"coverImageUrl\":\"https://example.com/hobbit.jpg\",\"genres\":[\"Fantasy\",\"Adventure\"]}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "req_list_books",
+      "_type": "request",
+      "parentId": "fld_books",
+      "name": "List Books",
+      "url": "{{ base_url }}/api/v1/books?page=0&size=20",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 2000
+    },
+    {
+      "_id": "req_search_books",
+      "_type": "request",
+      "parentId": "fld_books",
+      "name": "Search Books",
+      "url": "{{ base_url }}/api/v1/books/search?query=Hobbit&page=0&size=20",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 3000
+    },
+    {
+      "_id": "req_get_book",
+      "_type": "request",
+      "parentId": "fld_books",
+      "name": "Get Book by ID",
+      "url": "{{ base_url }}/api/v1/books/{{ book_id }}",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 4000
+    },
+    {
+      "_id": "req_update_book",
+      "_type": "request",
+      "parentId": "fld_books",
+      "name": "Update Book",
+      "url": "{{ base_url }}/api/v1/books/{{ book_id }}",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"title\":\"The Hobbit - Updated\",\"description\":\"An updated adventure of hobbit\"}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "metaSortKey": 5000
+    },
+    {
+      "_id": "req_delete_book",
+      "_type": "request",
+      "parentId": "fld_books",
+      "name": "Delete Book",
+      "url": "{{ base_url }}/api/v1/books/{{ book_id }}",
+      "method": "DELETE",
+      "headers": [],
+      "metaSortKey": 6000
+    },
+    {
+      "_id": "fld_users",
+      "_type": "request_group",
+      "parentId": "wrk_novelist",
+      "name": "Users",
+      "environment": {},
+      "metaSortKey": 2000
+    },
+    {
+      "_id": "req_create_user",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Create User",
+      "url": "{{ base_url }}/api/v1/users",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"name\":\"John Doe\",\"email\":\"john@example.com\",\"age\":28,\"preferences\":{\"favoriteGenres\":[\"Fantasy\",\"Adventure\"],\"favoriteAuthors\":[\"J.R.R. Tolkien\"],\"annualReadingGoal\":12,\"emailNotifications\":true,\"recommendationNotifications\":true}}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "req_list_users",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "List Users",
+      "url": "{{ base_url }}/api/v1/users?page=0&size=20",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 2000
+    },
+    {
+      "_id": "req_search_users",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Search Users",
+      "url": "{{ base_url }}/api/v1/users/search?query=John&page=0&size=20",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 3000
+    },
+    {
+      "_id": "req_get_user",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Get User by ID",
+      "url": "{{ base_url }}/api/v1/users/{{ user_id }}",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 4000
+    },
+    {
+      "_id": "req_update_user",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Update User",
+      "url": "{{ base_url }}/api/v1/users/{{ user_id }}",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"name\":\"John Doe Updated\",\"age\":29}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "metaSortKey": 5000
+    },
+    {
+      "_id": "req_update_preferences",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Update User Preferences",
+      "url": "{{ base_url }}/api/v1/users/{{ user_id }}/preferences",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"preferences\":{\"favoriteGenres\":[\"Science Fiction\",\"Mystery\"],\"annualReadingGoal\":24}}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "metaSortKey": 6000
+    },
+    {
+      "_id": "req_delete_user",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "Delete User",
+      "url": "{{ base_url }}/api/v1/users/{{ user_id }}",
+      "method": "DELETE",
+      "headers": [],
+      "metaSortKey": 7000
+    },
+    {
+      "_id": "fld_ratings",
+      "_type": "request_group",
+      "parentId": "wrk_novelist",
+      "name": "Ratings",
+      "environment": {},
+      "metaSortKey": 3000
+    },
+    {
+      "_id": "req_add_rating",
+      "_type": "request",
+      "parentId": "fld_ratings",
+      "name": "Add Rating",
+      "url": "{{ base_url }}/api/v1/users/{{ user_id }}/ratings/{{ book_id }}",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"rating\":5,\"review\":\"An excellent book! Highly recommended.\"}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "fld_analytics",
+      "_type": "request_group",
+      "parentId": "wrk_novelist",
+      "name": "Analytics",
+      "environment": {},
+      "metaSortKey": 4000
+    },
+    {
+      "_id": "req_book_stats",
+      "_type": "request",
+      "parentId": "fld_analytics",
+      "name": "Get Book Statistics",
+      "url": "{{ base_url }}/api/v1/analytics/books/{{ book_id }}/stats",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "req_trending_books",
+      "_type": "request",
+      "parentId": "fld_analytics",
+      "name": "Get Trending Books",
+      "url": "{{ base_url }}/api/v1/analytics/books/trending?limit=10",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 2000
+    },
+    {
+      "_id": "req_genre_popularity",
+      "_type": "request",
+      "parentId": "fld_analytics",
+      "name": "Get Genre Popularity",
+      "url": "{{ base_url }}/api/v1/analytics/genres",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 3000
+    },
+    {
+      "_id": "fld_recommendations",
+      "_type": "request_group",
+      "parentId": "wrk_novelist",
+      "name": "Recommendations",
+      "environment": {},
+      "metaSortKey": 5000
+    },
+    {
+      "_id": "req_recommendations",
+      "_type": "request",
+      "parentId": "fld_recommendations",
+      "name": "Get User Recommendations",
+      "url": "{{ base_url }}/api/v1/recommendations/users/{{ user_id }}?limit=10",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "wrk_novelist",
+      "name": "System",
+      "environment": {},
+      "metaSortKey": 6000
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Health Check",
+      "url": "{{ base_url }}/actuator/health",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 1000
+    },
+    {
+      "_id": "req_metrics",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Prometheus Metrics",
+      "url": "{{ base_url }}/actuator/prometheus",
+      "method": "GET",
+      "headers": [],
+      "metaSortKey": 2000
+    }
+  ]
+}

@@ -22,8 +22,21 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _to_native(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _to_native(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_native(item) for item in value]
+    if hasattr(value, "to_native"):
+        try:
+            return _to_native(value.to_native())
+        except Exception:
+            pass
+    return value
+
+
 def _node(record: Any, key: str = "entity") -> dict[str, Any]:
-    return dict(record[key])
+    return _to_native(dict(record[key]))
 
 
 class NovelistRepository:
@@ -165,20 +178,20 @@ class NovelistRepository:
             "SET r.rating = $rating, r.review = $review RETURN r",
             user_id=user_id, book_id=book_id, rating=rating, review=review, timestamp=_now(),
         )
-        relation = dict(record["r"])
+        relation = _to_native(dict(record["r"]))
         return {"book": book, "rating": relation["rating"], "review": relation.get("review"),
                 "timestamp": relation.get("timestamp"), "helpfulCount": relation.get("helpful", 0)}
 
     def page_books(self, page: int, size: int, query: str | None = None, genre: str | None = None, year: int | None = None) -> tuple[list[dict[str, Any]], int]:
-        where = "WHERE ($query IS NULL OR toLower(b.title) CONTAINS toLower($query) OR toLower(b.author) CONTAINS toLower($query)) AND ($genre IS NULL OR $genre IN b.genres) AND ($year IS NULL OR b.publishedYear = $year)"
-        params = {"query": query, "genre": genre, "year": year, "skip": page * size, "size": size}
+        where = "WHERE ($search_query IS NULL OR toLower(b.title) CONTAINS toLower($search_query) OR toLower(b.author) CONTAINS toLower($search_query)) AND ($genre IS NULL OR $genre IN b.genres) AND ($year IS NULL OR b.publishedYear = $year)"
+        params = {"search_query": query, "genre": genre, "year": year, "skip": page * size, "size": size}
         total = self._one(f"MATCH (b:Book) {where} RETURN count(b) AS total", **params)["total"]
         rows = self._all(f"MATCH (b:Book) {where} RETURN b AS entity ORDER BY b.title SKIP $skip LIMIT $size", **params)
         return [self._book_out(_node(row)) for row in rows], total
 
     def page_users(self, page: int, size: int, query: str | None = None) -> tuple[list[dict[str, Any]], int]:
-        where = "WHERE ($query IS NULL OR toLower(u.name) CONTAINS toLower($query))"
-        params = {"query": query, "skip": page * size, "size": size}
+        where = "WHERE ($search_query IS NULL OR toLower(u.name) CONTAINS toLower($search_query))"
+        params = {"search_query": query, "skip": page * size, "size": size}
         total = self._one(f"MATCH (u:User) {where} RETURN count(u) AS total", **params)["total"]
         rows = self._all(f"MATCH (u:User) {where} RETURN u AS entity ORDER BY u.name SKIP $skip LIMIT $size", **params)
         return [self._user_out(_node(row), []) for row in rows], total
