@@ -1,0 +1,1 @@
+"""Novelist FastAPI application."""
