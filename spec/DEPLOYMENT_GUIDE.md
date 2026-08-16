@@ -179,12 +179,34 @@ docker compose run --rm novelist-app python -c \
 
 ### RabbitMQ publish failures
 
-The publisher logs errors but does not surface them to callers. Look for log lines like:
+The publisher maintains a persistent connection and retries once on AMQP errors before logging and swallowing the failure. Look for log lines like:
 ```
-ERROR  Could not publish event with routing key book.created
+WARNING  RabbitMQ connection lost; reconnecting  routing_key=book.created
+ERROR    Could not publish event  routing_key=book.created
 ```
 
 Set `RABBITMQ_ENABLED=false` to silence these if a broker isn't available.
+
+### CORS_ORIGINS startup crash (`SettingsError: error parsing value for field "cors_origins"`)
+
+`pydantic-settings` tries to JSON-decode `list` fields from env vars. Use a **plain string** for `CORS_ORIGINS`:
+
+```bash
+# Correct — plain string
+CORS_ORIGINS=*
+CORS_ORIGINS=http://localhost:5173,https://myapp.com
+
+# Also accepted — JSON array
+CORS_ORIGINS=["http://localhost:5173"]
+```
+
+Never set it as an unquoted list in the Docker Compose `environment:` block without quoting.
+
+### UI shows "Network Error" / all API calls fail
+
+1. Confirm the backend is running: `curl http://localhost:8081/actuator/health`
+2. Check `CORS_ORIGINS` includes the UI origin (e.g. `http://localhost:5173`)
+3. Check browser DevTools Network tab for the exact HTTP status and response body
 
 ### Port conflicts
 

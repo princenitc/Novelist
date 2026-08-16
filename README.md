@@ -1,39 +1,63 @@
 # Novelist
 
-Novelist is a Python REST API for managing books, users, ratings, recommendations, and reading analytics. It uses FastAPI, Neo4j, optional RabbitMQ domain events, and a local RAG (Retrieval-Augmented Generation) semantic search pipeline.
+Novelist is a full-stack book-management application. A **Python / FastAPI** backend handles books, users, ratings, recommendations, and semantic search; a **React / Vite** frontend provides a browser UI for all those features.
 
 ## Project structure
 
-The application uses feature modules with explicit application and infrastructure layers.
-Each feature owns its API contract, router, service, and persistence concern; routers do not contain business logic.
-Services depend on feature-owned `Protocol` ports, while the dependency container supplies the concrete Neo4j and RabbitMQ adapters.
-
 ```
-app/
-├── main.py                         # Thin application bootstrap and router registration
-├── core/                           # Configuration, dependencies, security, rate limiting, logging
-├── infrastructure/                 # Concrete external-system adapters
-│   ├── neo4j/                      # Driver lifecycle and composed repository
-│   └── messaging/                  # RabbitMQ publisher
-└── modules/                        # Feature modules
-    ├── auth/                       # register, login, refresh, logout
-    ├── books/                      # CRUD + paginated search with filters
-    ├── users/                      # CRUD + preferences + search
-    ├── ratings/                    # Per-user book ratings
-    ├── analytics/                  # Stats, trending, genre breakdown
-    ├── recommendations/            # Graph-based recommendations
-    ├── profile/                    # Current-user profile (/me)
-    ├── rag/                        # Semantic search: index + vector query
-    └── shared/                     # Cross-feature API contracts
+Novelist/
+├── app/                            # FastAPI backend
+│   ├── main.py                     # Bootstrap: lifespan, router registration, exception handlers
+│   ├── core/                       # Config, dependencies, security, rate limiting, logging
+│   ├── infrastructure/             # Concrete external-system adapters
+│   │   ├── neo4j/                  # Driver lifecycle and composed repository
+│   │   └── messaging/              # RabbitMQ persistent-connection publisher
+│   └── modules/                    # Feature modules
+│       ├── auth/                   # register, login, refresh, logout
+│       ├── books/                  # CRUD + paginated search with filters
+│       ├── users/                  # CRUD + preferences + search
+│       ├── ratings/                # Per-user book ratings and reviews
+│       ├── analytics/              # Stats, trending, genre breakdown
+│       ├── recommendations/        # Graph-based recommendations
+│       ├── profile/                # Current-user profile (/me)
+│       ├── rag/                    # Semantic search: index + vector query
+│       └── shared/                 # Cross-feature API contracts
+├── ui/                             # React + Vite + TypeScript frontend
+│   └── src/
+│       ├── api/                    # Typed API client (axios + all endpoints)
+│       ├── context/                # AuthContext (JWT storage, login/logout)
+│       ├── components/             # AppShell, modals (AddBook, RateReview)
+│       └── pages/                  # BooksPage, BookDetailPage, ProfilePage,
+│                                   # TrendingPage, ChatPage, AuthPages
+├── tests/                          # pytest: unit + integration + coverage
+├── spec/                           # Architecture, deployment, and design docs
+├── docker-compose.yml              # Full stack: API, Neo4j, RabbitMQ, Prometheus, Grafana
+└── prometheus.yml                  # Prometheus scrape config
+```
+
+Each backend module follows the same internal layout:
+```
+<module>/
+├── ports.py       # Protocol interfaces (dependency-inversion boundary)
+├── schemas.py     # Pydantic request/response models
+├── service.py     # Use-case logic; depends on ports
+├── repository.py  # Neo4j mixin; implements the port
+└── router.py      # FastAPI router; calls service via DI
 ```
 
 ## Requirements
 
+**Backend**
 - Python 3.13+
 - Neo4j 5+
 - RabbitMQ (optional — disable with `RABBITMQ_ENABLED=false`)
 
+**Frontend**
+- Node.js 18+
+
 ## Run locally
+
+### 1 — Backend
 
 ```bash
 python -m venv .venv
@@ -45,29 +69,53 @@ uvicorn app.main:app --reload --port 8081
 
 Interactive API docs: `http://localhost:8081/docs`
 
-## Test
+> Set `RABBITMQ_ENABLED=false` in `.env` if you don't have a broker running locally.
+
+### 2 — Frontend
 
 ```bash
-pytest
+cd ui
+npm install
+npm run dev          # → http://localhost:5173
 ```
-
-58 tests across `tests/test_api_integration.py`, `tests/test_api_coverage.py`, and `tests/unit/test_services.py`.
 
 ## Run with containers
 
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
-| Service | URL |
-|---|---|
-| Novelist API | `http://localhost:8081` |
-| Neo4j Browser | `http://localhost:7474` |
-| RabbitMQ management | `http://localhost:15672` |
-| Prometheus | `http://localhost:9090` |
-| Grafana | `http://localhost:3000` |
+Start the UI separately (it is a dev server, not containerised):
 
-## Endpoints
+```bash
+cd ui && npm run dev
+```
+
+### Service URLs
+
+| Service | URL | Notes |
+|---|---|---|
+| **Novelist UI** | `http://localhost:5173` | React dev server |
+| **API + Swagger** | `http://localhost:8081/docs` | — |
+| **Neo4j Browser** | `http://localhost:7474` | neo4j / password |
+| **RabbitMQ Management** | `http://localhost:15672` | novelist / password |
+| **Prometheus** | `http://localhost:9090` | — |
+| **Grafana** | `http://localhost:3000` | admin / password |
+
+## UI features
+
+| Page | What it does |
+|---|---|
+| **Register / Login** | JWT-based auth; tokens stored in `localStorage` |
+| **Browse Books** | Paginated grid, search by title/author, filter by genre, sort by title/rating/newest |
+| **Book Detail** | Full metadata, live rating summary, Rate & Review modal (star picker + free-text) |
+| **Add Book** | Modal form: title, author, year, pages, genres, ISBN, cover URL, description |
+| **Trending** | Top-10 books by rating×count; genre popularity bar chart |
+| **My Profile** | Identity card + complete reading history with stars and reviews |
+| **AI Search** | Chat-style RAG interface — semantic search over indexed book content |
+
+## API endpoints
 
 | Resource | Endpoints |
 |---|---|
@@ -92,8 +140,16 @@ docker compose up --build
 | `year` | int | Published year |
 | `sortBy` | `title` \| `rating` \| `createdAt` | Sort field (default `title`) |
 | `sortOrder` | `asc` \| `desc` | Sort direction (default `asc`) |
-| `minRating` | float | Minimum average rating |
+| `minRating` | float | Minimum average rating (1–5) |
 | `maxPageCount` | int | Maximum page count |
+
+## Test
+
+```bash
+pytest
+```
+
+58 tests across `tests/test_api_integration.py`, `tests/test_api_coverage.py`, and `tests/unit/test_services.py`.
 
 ## Configuration
 
@@ -107,8 +163,8 @@ Copy `.env.example` to `.env`. Key variables:
 | `JWT_EXPIRY_MINUTES` | `60` | Access token lifetime |
 | `JWT_REFRESH_EXPIRY_DAYS` | `7` | Refresh token lifetime |
 | `LOG_LEVEL` | `INFO` | `DEBUG` (pretty) or `INFO`/`WARNING`/`ERROR` (JSON) |
-| `CORS_ORIGINS` | `*` | Comma-separated allowed origins |
-| `RAG_EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Local sentence-transformers model |
+| `CORS_ORIGINS` | `*` | Plain string: `*` or comma-separated origins, e.g. `http://localhost:5173` |
+| `RAG_EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Local sentence-transformers model (~90 MB, downloaded once) |
 | `RAG_TOP_K` | `5` | Default number of RAG search results |
 
 See `.env.example` for the full list and `spec/` for architecture and deployment documentation.

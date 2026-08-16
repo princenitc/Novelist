@@ -9,21 +9,21 @@
 - [Event Publishing](#event-publishing)
 - [Data Flow](#data-flow)
 - [Architectural Decisions](#architectural-decisions)
-- [Planned: RAG Integration](#planned-rag-integration)
 
 ## Overview
 
-Novelist is a book management and rating API built with **Python 3.13** and **FastAPI**. It uses a Neo4j graph database for persistence and RabbitMQ for optional domain-event publishing. The application is structured as a modular monolith — each feature owns its router, service, Pydantic schemas, and repository mixin — with clean separation between the API, business logic, and infrastructure layers.
+Novelist is a full-stack book-management application. The **backend** is a Python 3.13 / FastAPI modular monolith; the **frontend** is a React 18 / Vite / TypeScript single-page application. The backend uses Neo4j for persistence, RabbitMQ for optional domain-event publishing, and a local sentence-transformers model for RAG semantic search.
 
 ### Key Capabilities
 - Book and user management (full CRUD)
-- Rating system with relationship properties
+- Rating and review system with relationship properties
 - Reading analytics (trending books, genre stats, per-book stats)
-- Graph-based recommendations
-- JWT authentication with bcrypt password hashing
+- Graph-based collaborative-filtering recommendations
+- JWT authentication with bcrypt password hashing and server-side refresh-token revocation
 - Prometheus metrics and health check endpoints
-- Optional domain-event publishing over RabbitMQ
-- **[Planned]** Semantic search and RAG-powered recommendations
+- Optional domain-event publishing over RabbitMQ (persistent connection, auto-reconnect)
+- RAG semantic search: local embeddings, Neo4j vector index, chat-style UI
+- React UI: book browsing, add/rate/review, profile, trending analytics, AI search chat
 
 ## Current Architecture
 
@@ -31,21 +31,22 @@ Novelist is a book management and rating API built with **Python 3.13** and **Fa
 
 ```mermaid
 graph TB
-    Client[Client Applications]
-    API[FastAPI Routers<br/>books · users · ratings · analytics · recommendations · auth · profile]
+    UI[React UI<br/>Vite · TypeScript · React Query]
+    API[FastAPI Routers<br/>books · users · ratings · analytics · recommendations · auth · profile · rag]
     Service[Service Layer<br/>per-feature services]
     Repo[Repository Layer<br/>feature mixins → NovelistRepository]
-    Neo4j[(Neo4j 5<br/>Graph Database)]
+    Neo4j[(Neo4j 5<br/>Graph Database + Vector Index)]
     MQ[RabbitMQ<br/>optional]
     Prometheus[Prometheus<br/>metrics]
 
-    Client -->|HTTP/REST| API
+    UI -->|HTTP/REST + Bearer JWT| API
     API -->|use-case calls| Service
     Service -->|Cypher queries| Repo
     Repo -->|Bolt| Neo4j
     Service -->|domain events| MQ
     API -.->|/actuator/prometheus| Prometheus
 
+    style UI fill:#ede9fe
     style API fill:#e1f5ff
     style Service fill:#fff3e0
     style Repo fill:#f3e5f5
@@ -58,26 +59,43 @@ graph TB
 app/
 ├── main.py                      # Bootstrap: lifespan, router registration, exception handlers
 ├── core/
-│   ├── config.py                # pydantic-settings — reads .env / env vars
-│   ├── dependencies.py          # FastAPI Depends factories (Repo, Publisher, current-user-id)
+│   ├── config.py                # pydantic-settings — reads .env / env vars; cors_origins parsed as str
+│   ├── dependencies.py          # FastAPI Depends factories (Repo, Publisher, Services)
 │   ├── http.py                  # error() helper for consistent JSONResponse errors
-│   ├── pagination.py            # PageOut helper
-│   └── security.py              # JWT encode/decode, bcrypt hashing, HTTPBearer dependency
+│   ├── pagination.py            # PageOut make_page helper
+│   └── security.py              # JWT encode/decode, bcrypt hashing, HTTPBearer, require_self()
 ├── infrastructure/
 │   ├── neo4j/
 │   │   ├── base.py              # Neo4jRepository, NotFoundError, ConflictError, Cypher helpers
 │   │   └── repository.py        # NovelistRepository — composed from all feature mixins
 │   └── messaging/
-│       └── publisher.py         # EventPublisher (pika, topic exchange, fire-and-forget)
+│       └── publisher.py         # EventPublisher (persistent pika connection, auto-reconnect)
 └── modules/
-    ├── auth/                    # register, login → JWT
-    ├── books/                   # CRUD + paginated search
-    ├── users/                   # CRUD + preferences
-    ├── ratings/                 # add rating
-    ├── analytics/               # book stats, trending, genre breakdown
-    ├── recommendations/         # graph-based per-user recommendations
+    ├── auth/                    # register, login → JWT (access + refresh with revocation)
+    ├── books/                   # CRUD + paginated search with 7 filter/sort params
+    ├── users/                   # CRUD + preferences; mutations require caller == userId
+    ├── ratings/                 # add rating+review; requires caller == userId
+    ├── analytics/               # book stats (BookStatsOut), trending, genre breakdown (GenreCountOut)
+    ├── recommendations/         # graph-based collaborative filtering
     ├── profile/                 # GET /api/v1/me
+    ├── rag/                     # chunk+embed index, Neo4j vector search
     └── shared/                  # APIModel base, PageOut, Preferences schemas
+
+ui/src/
+├── api/                         # Typed axios client: auth, books, ratings, analytics, profile, rag
+├── context/AuthContext.tsx      # JWT login/logout/register; decodes userId from token
+├── components/
+│   ├── AppShell.tsx             # Sidebar nav (Books, Trending, Profile, AI Search) + sign-out
+│   ├── AddBookModal.tsx         # Book creation form
+│   ├── RateReviewModal.tsx      # Star picker (1–5) + review textarea
+│   └── ProtectedRoute.tsx       # Redirects unauthenticated users to /login
+└── pages/
+    ├── AuthPages.tsx            # Login + Register forms
+    ├── BooksPage.tsx            # Paginated grid, search, filter, sort; Add Book
+    ├── BookDetailPage.tsx       # Metadata, live stats, Rate & Review, Delete
+    ├── ProfilePage.tsx          # Identity card + full reading history
+    ├── TrendingPage.tsx         # Top-10 ranking + genre bar chart
+    └── ChatPage.tsx             # Chat-style RAG semantic search
 ```
 
 Each module follows the same internal layout:
@@ -194,7 +212,7 @@ CREATE INDEX book_author_index     IF NOT EXISTS FOR (b:Book) ON (b.author);
 
 ## Event Publishing
 
-The `EventPublisher` publishes JSON messages to a durable topic exchange `novelist.domain.exchange` using `pika` (blocking, connection-per-publish). RabbitMQ publishing is **optional** — set `RABBITMQ_ENABLED=false` to disable without affecting API behaviour.
+The `EventPublisher` maintains a **persistent `pika` connection** to a durable topic exchange `novelist.domain.exchange`. On AMQP failure it logs a warning, reconnects once, and retries — if the second attempt also fails the error is swallowed so a broker outage never fails an API write. The connection is cleanly closed during the FastAPI lifespan shutdown. RabbitMQ publishing is **optional** — set `RABBITMQ_ENABLED=false` to disable entirely.
 
 | Routing key | Trigger |
 |-------------|---------|
@@ -244,18 +262,16 @@ Graph traversals are the natural query shape for ratings, recommendations, and s
 ### ADR-004: JWT authentication (python-jose + passlib)
 Stateless HS256 tokens. Bcrypt hashing via passlib. The `HTTPBearer` dependency in `core/security.py` is used as a FastAPI `Depends` on any protected route.
 
-## Planned: RAG Integration
+## ADR-005: React + Vite SPA for the frontend
+The UI is a separate Vite dev server (port 5173) rather than server-rendered HTML. This keeps the backend a pure JSON API, allows the UI to be deployed independently (CDN, static hosting), and enables the React Query cache to avoid redundant fetches. The backend's CORS middleware permits the dev origin; production deployments should set `CORS_ORIGINS` explicitly.
 
-The next major feature is Retrieval-Augmented Generation for semantic book search. Planned additions:
+## ADR-006: Authorization — caller must own the resource (`require_self`)
+`PUT/DELETE /users/{userId}` and `POST /users/{userId}/ratings/{bookId}` validate that the JWT subject matches the URL `userId`. This is enforced by [`core/security.require_self()`](../app/core/security.py) called at the top of each mutating route handler, returning HTTP 403 on mismatch.
 
-- `app/rag/` module: `docling_service.py`, `embedding_service.py`, `vector_store.py`
-- New endpoints: `POST /api/v1/rag/index`, `GET /api/v1/rag/search`
-- Vector storage: Neo4j vector index (preferred — avoids extra infrastructure) or a dedicated vector DB
-- Embedding model: TBD (local Sentence Transformers vs. OpenAI API)
-
-See `NEXT_STEPS.md` for the open decisions and implementation checklist.
+## ADR-007: `CORS_ORIGINS` stored as `str`, parsed by `cors_origins_list`
+`pydantic-settings` JSON-decodes any field typed as `list[str]` before validators run, so a bare `*` env var causes a startup crash. `cors_origins` is stored as a plain `str` field; the `@computed_field cors_origins_list` property parses it at access time, accepting `*`, comma-separated origins, or a JSON array.
 
 ---
 
-**Last Updated**: 2026-08-16  
+**Last Updated**: 2026-08-16
 **Status**: Current
