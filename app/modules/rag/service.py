@@ -10,16 +10,20 @@ logger = structlog.get_logger(__name__)
 
 
 class RagService:
+    # Class-level flag so the check survives across request-scoped instances.
+    # The vector index creation is idempotent (IF NOT EXISTS), so a one-time
+    # call per process is sufficient.
+    _index_ready: bool = False
+
     def __init__(self, repository: RagRepositoryPort, settings: Settings):
         self.repo = repository
         self.settings = settings
-        self._index_ready = False
 
     def _ensure_index(self) -> None:
-        if not self._index_ready:
+        if not RagService._index_ready:
             dims = dimensions(self.settings.rag_embedding_model)
             self.repo.ensure_vector_index(dims)
-            self._index_ready = True
+            RagService._index_ready = True
 
     def index_book(self, book: dict) -> dict:
         """Chunk and embed ``book['content']``, store vectors in Neo4j.

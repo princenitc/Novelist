@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,9 +25,18 @@ class Settings(BaseSettings):
     jwt_expiry_minutes: int = 60           # access token lifetime
     jwt_refresh_expiry_days: int = 7       # refresh token lifetime
 
-    # CORS — comma-separated list of allowed origins, e.g. "http://localhost:3000,https://myapp.com"
-    # Use "*" to allow all origins (development only — insecure in production)
-    cors_origins: list[str] = ["*"]
+    # CORS — set as plain text: CORS_ORIGINS=* or CORS_ORIGINS=http://a.com,http://b.com
+    # Stored as str so pydantic-settings never tries to JSON-decode it.
+    cors_origins: str = "*"
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def cors_origins_list(self) -> list[str]:
+        value = self.cors_origins.strip()
+        if value.startswith("["):
+            import json
+            return json.loads(value)
+        return [v.strip() for v in value.split(",") if v.strip()]
 
     # RAG
     rag_embedding_model: str = "all-MiniLM-L6-v2"  # 384-dim, fast local model

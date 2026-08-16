@@ -71,3 +71,9 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication token")
     return decode_access_token(credentials.credentials)
+
+
+def require_self(user_id: str, caller_id: str) -> None:
+    """Raise 403 if *caller_id* (from the JWT) does not match *user_id* (from the URL)."""
+    if caller_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed to modify another user's data")

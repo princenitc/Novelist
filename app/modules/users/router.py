@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Response
 
 from app.core.dependencies import Repo, UserServiceDep
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user_id, require_self
 from app.core.http import check_paging, error
 from app.core.pagination import make_page
 from app.modules.shared.schemas import PageOut, PreferencesUpdate
@@ -38,16 +38,19 @@ def get_user(user_id: str, repo: Repo, _: str = Depends(get_current_user_id)):
 
 
 @router.put("/{user_id}", response_model=UserOut)
-def update_user(user_id: str, body: UserUpdate, repo: Repo, _: str = Depends(get_current_user_id)):
+def update_user(user_id: str, body: UserUpdate, repo: Repo, caller_id: str = Depends(get_current_user_id)):
+    require_self(user_id, caller_id)
     return repo.update_user(user_id, body.model_dump(exclude_unset=True))
 
 
 @router.put("/{user_id}/preferences", response_model=UserOut)
-def update_preferences(user_id: str, body: PreferencesUpdate, service: UserServiceDep, _: str = Depends(get_current_user_id)):
+def update_preferences(user_id: str, body: PreferencesUpdate, service: UserServiceDep, caller_id: str = Depends(get_current_user_id)):
+    require_self(user_id, caller_id)
     return service.update_preferences(user_id, body.preferences.model_dump())
 
 
 @router.delete("/{user_id}", status_code=204)
-def delete_user(user_id: str, repo: Repo, _: str = Depends(get_current_user_id)) -> Response:
+def delete_user(user_id: str, repo: Repo, caller_id: str = Depends(get_current_user_id)) -> Response:
+    require_self(user_id, caller_id)
     repo.delete_user(user_id)
     return Response(status_code=204)

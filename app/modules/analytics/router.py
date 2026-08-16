@@ -3,12 +3,13 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.dependencies import AnalyticsServiceDep
 from app.core.security import get_current_user_id
+from app.modules.analytics.schemas import BookStatsOut, GenreCountOut
 from app.modules.books.schemas import BookOut
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
 
-@router.get("/books/{book_id}/stats")
+@router.get("/books/{book_id}/stats", response_model=BookStatsOut)
 def book_stats(book_id: str, service: AnalyticsServiceDep, _: str = Depends(get_current_user_id)):
     return service.book_stats(book_id)
 
@@ -18,6 +19,6 @@ def trending_books(service: AnalyticsServiceDep, limit: int = Query(default=10, 
     return service.trending_books(limit)
 
 
-@router.get("/genres")
+@router.get("/genres", response_model=list[GenreCountOut])
 def genre_popularity(service: AnalyticsServiceDep, _: str = Depends(get_current_user_id)):
     return service.genre_popularity()

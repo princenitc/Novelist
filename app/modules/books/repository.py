@@ -97,7 +97,10 @@ class BookRepositoryMixin:
             "size": size,
         }
 
-        count_q = f"{match} {with_clause} {where} RETURN count(b) AS total"
+        # When the OPTIONAL MATCH for ratings is present each book can appear
+        # multiple times (once per rating), so we must count distinct nodes.
+        count_expr = "count(DISTINCT b)" if needs_rating else "count(b)"
+        count_q = f"{match} {with_clause} {where} RETURN {count_expr} AS total"
         data_q  = f"{match} {with_clause} {where} RETURN b AS entity {order_by} SKIP $skip LIMIT $size"
 
         total = self._one(count_q, **params)["total"]

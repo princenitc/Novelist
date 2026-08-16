@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Neo4j is not reachable at startup; requests will retry the connection.")
     yield
     app.state.repository.close()
+    app.state.publisher.close()
 
 
 app = FastAPI(title="Novelist API", version="1.0", lifespan=lifespan)
@@ -54,7 +55,7 @@ Instrumentator().instrument(app).expose(app, endpoint="/actuator/prometheus", in
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
+    allow_origins=get_settings().cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
