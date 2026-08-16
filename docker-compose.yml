@@ -52,6 +52,13 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=novelist
       - RABBITMQ_PASSWORD=password
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-secret}
+      - JWT_EXPIRY_MINUTES=${JWT_EXPIRY_MINUTES:-60}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - RAG_EMBEDDING_MODEL=${RAG_EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      - RAG_CHUNK_SIZE=${RAG_CHUNK_SIZE:-512}
+      - RAG_CHUNK_OVERLAP=${RAG_CHUNK_OVERLAP:-64}
+      - RAG_TOP_K=${RAG_TOP_K:-5}
     depends_on:
       neo4j:
         condition: service_healthy
@@ -59,6 +66,12 @@ services:
         condition: service_healthy
     networks:
       - novelist-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -100,6 +113,12 @@ services:
       - prometheus_data:/prometheus
     networks:
       - novelist-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   grafana:
     image: grafana/grafana:10.0.3
@@ -116,6 +135,12 @@ services:
       - novelist-network
     depends_on:
       - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 volumes:
   neo4j_data:

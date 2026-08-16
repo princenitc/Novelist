@@ -325,6 +325,75 @@
       "method": "GET",
       "headers": [],
       "metaSortKey": 2000
+    },
+    {
+      "_id": "req_2753666d319b4f77868f",
+      "_type": "request",
+      "parentId": "fld_books",
+      "modified": 1720000000000,
+      "created": 1720000000000,
+      "name": "Register",
+      "description": "",
+      "url": "{{ base_url }}/api/v1/auth/register",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Alice\",\n  \"email\": \"alice@example.com\",\n  \"age\": 30,\n  \"password\": \"password123\"\n}"
+      },
+      "metaSortKey": -1720000000000
+    },
+    {
+      "_id": "req_eb6f275aa3d74a72a177",
+      "_type": "request",
+      "parentId": "fld_books",
+      "modified": 1720000000000,
+      "created": 1720000000000,
+      "name": "Login",
+      "description": "",
+      "url": "{{ base_url }}/api/v1/auth/login",
+      "method": "POST",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\"\n}"
+      },
+      "metaSortKey": -1720000000000
+    },
+    {
+      "_id": "req_4cd03461646f4a73953e",
+      "_type": "request",
+      "parentId": "fld_books",
+      "modified": 1720000000000,
+      "created": 1720000000000,
+      "name": "Get Current User (me)",
+      "description": "",
+      "url": "{{ base_url }}/api/v1/me",
+      "method": "GET",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ access_token }}"
+        }
+      ],
+      "authentication": {},
+      "parameters": [],
+      "body": {},
+      "metaSortKey": -1720000000000
     }
   ]
 }

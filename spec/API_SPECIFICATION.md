@@ -47,37 +47,27 @@ https://api.novelist.com/v1
 
 ## Authentication
 
-### Current: No Authentication (Development)
-
-Currently, the API has no authentication. All endpoints are publicly accessible.
-
-### Planned: JWT Authentication
+All endpoints except `POST /api/v1/auth/register` and `POST /api/v1/auth/login` require a valid JWT bearer token:
 
 ```http
 Authorization: Bearer <jwt_token>
 ```
 
-**Token Structure**:
+**Token structure** (HS256, signed with `JWT_SECRET_KEY`):
 ```json
 {
-  "sub": "user-123",
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "roles": ["USER", "ADMIN"],
-  "iat": 1718712000,
+  "sub": "user-uuid",
   "exp": 1718798400
 }
 ```
 
-**Authentication Endpoints** (Planned):
+**Authentication endpoints**:
 ```
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/refresh
-POST /api/v1/auth/logout
+POST /api/v1/auth/register   — create account, returns token
+POST /api/v1/auth/login      — validate credentials, returns token
 ```
 
-See [SECURITY_DESIGN.md](./SECURITY_DESIGN.md) for detailed authentication specification.
+See `app/core/security.py` for the implementation (`python-jose`, `passlib/bcrypt`).
 
 ## Common Response Formats
 

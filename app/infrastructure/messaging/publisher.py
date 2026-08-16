@@ -1,13 +1,13 @@
 import json
-import logging
 from datetime import date, datetime
 from uuid import uuid4
 
 import pika
+import structlog
 
-from .config import Settings
+from app.core.config import Settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _json_default(value: object) -> str:
@@ -40,4 +40,4 @@ class EventPublisher:
             connection.close()
         except pika.exceptions.AMQPError:
             # Event delivery must not turn a successful database write into a failed API call.
-            logger.exception("Could not publish event with routing key %s", routing_key)
+            logger.exception("Could not publish event", routing_key=routing_key)
